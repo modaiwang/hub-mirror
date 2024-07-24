@@ -24,6 +24,12 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: '1.20'
+      # delete
+      - name: Print environment variables
+        run: |
+          echo "${{ secrets.DOCKER_USERNAME }}"  # 打印提取的仓库列表
+          echo "${{ secrets.DOCKER_TOKEN }}"  # 打印阿里云镜像仓库地址
+          echo "${{ secrets.DOCKER_REPOSITORY }}"  # 打印阿里云镜像仓库地址
       # 3. 运行 go 代码
       - name: Run code
         run: go run main.go --username=${{ secrets.DOCKER_USERNAME }} --password=${{ secrets.DOCKER_TOKEN }} --repository=${{ secrets.DOCKER_REPOSITORY }} --content='${{ github.event.issue.body }}' --maxContent=11 --outputPath=output.sh
