@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
 )
 
@@ -26,7 +27,7 @@ func NewCli(ctx context.Context, repository, username, password string, log io.W
 		return nil, errors.New("username or password cannot be empty")
 	}
 
-	authConfig := types.AuthConfig{
+	authConfig := registry.AuthConfig{
 		Username:      username,
 		Password:      password,
 		ServerAddress: repository,
@@ -62,7 +63,7 @@ type Output struct {
 	Target string
 }
 
-func (c *Cli) Source2Target(source string) (*Output, error) {
+func (c *Cli) Source2Target(source string, platform string) (*Output, error) {
 	if source == "" {
 		return nil, errors.New("source is nil")
 	}
@@ -71,22 +72,26 @@ func (c *Cli) Source2Target(source string) (*Output, error) {
 
 	if strings.Contains(source, "$") {
 		parts := strings.Split(source, "$")
-		if len(parts) > 1 {
-			source = parts[0]
-			target = parts[1]
-		}
+		source = parts[0]
+		target = parts[1]
 	}
 
-	if !strings.Contains(target, ":") &&
-		!strings.Contains(source, "@sha256") && strings.Contains(source, ":") {
+	if !strings.Contains(target, ":") && strings.Contains(source, ":") {
 		parts := strings.Split(source, ":")
-		if len(parts) > 1 {
-			target += ":" + parts[1]
+		target += ":" + parts[1]
+	}
+
+	if platform != "" {
+		if strings.Contains(target, ":") {
+			parts := strings.Split(target, ":")
+			target = parts[0] + "-" + strings.ReplaceAll(platform, "/", "-") + ":" + parts[1]
+		} else {
+			target += "-" + strings.ReplaceAll(platform, "/", "-")
 		}
 	}
 
 	if c.repository == "" {
-		target = c.username + "/" + strings.ReplaceAll(target, "/", ".")
+		target = "docker.io/" + c.username + "/" + strings.ReplaceAll(target, "/", ".")
 	} else {
 		target = c.repository + "/" + strings.ReplaceAll(target, "/", ".")
 	}
@@ -98,7 +103,7 @@ func (c *Cli) Source2Target(source string) (*Output, error) {
 }
 
 func (c *Cli) PullTagPushImage(ctx context.Context, source, platform string) (*Output, error) {
-	output, err := c.Source2Target(source)
+	output, err := c.Source2Target(source, platform)
 	if err != nil {
 		return nil, err
 	}
